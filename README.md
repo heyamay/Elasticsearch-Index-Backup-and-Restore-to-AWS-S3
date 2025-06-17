@@ -8,14 +8,14 @@ from verifying Elasticsearch installation to automating the backup process.
 Before you begin, ensure you have the following: 
 ● Elasticsearch Installation: Elasticsearch should be installed on our Rocky Linux server. 
 If not, follow the installation steps in Section 2.
-● 8 indices to back up (replace index1 to index8 with actual names after ins 
-● AWS S3 Bucket: An S3 bucket dedicated for Elasticsearch snapshots. 
-○ Recommended S3 Bucket Name: my-backup-elasticsearch 
-○ Region: ap-south-1 
-● AWS IAM User Credentials: An IAM user with programmatic access (Access Key ID 
+- 8 indices to back up (replace index1 to index8 with actual names after ins 
+- AWS S3 Bucket: An S3 bucket dedicated for Elasticsearch snapshots. 
+- Recommended S3 Bucket Name: my-backup-elasticsearch 
+- Region: ap-south-1
+- AWS IAM User Credentials: An IAM user with programmatic access (Access Key ID 
 and Secret Access Key) and permissions to s3:GetObject, s3:ListBucket, 
 s3:PutObject, s3:DeleteObject for the designated S3 bucket. 
-○ Provided Credentials: 
+- Provided Credentials: 
 ■ aws_access_key = "AKIA32*******" 
 ■ aws_secret_key = 
 "PGNntMdwSe4**************"
@@ -23,18 +23,18 @@ s3:PutObject, s3:DeleteObject for the designated S3 bucket.
 ## 2. Verify Elasticsearch Status & Installation (if needed) 
 First, let's check if Elasticsearch is already running on your Rocky Linux server. 
 ssh rocky@server-ip 
-2.1 Check Elasticsearch Service Status 
+### 2.1 Check Elasticsearch Service Status 
 Open your terminal and run the following command: 
 sudo systemctl status elasticsearch 
 ● If Elasticsearch is active (running): Great! You can skip to Section 3. 
 ● If Elasticsearch is inactive (dead) or not found: You need to start or install it. 
 Proceed to Section 2.2. 
-2.2 Install Elasticsearch on Rocky Linux (if not installed) 
+### 2.2 Install Elasticsearch on Rocky Linux (if not installed) 
 If Elasticsearch is not installed, follow these steps. 
-2.2.1 Import Elasticsearch GPG Key 
+### 2.2.1 Import Elasticsearch GPG Key 
 This key is used to verify the Elasticsearch packages. 
 sudo rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch 
-2.2.2 Create Elasticsearch Repository File 
+### 2.2.2 Create Elasticsearch Repository File 
 Create a new repository file for Elasticsearch. 
 sudo nano /etc/yum.repos.d/elasticsearch.repo 
 Paste the following content: 
@@ -48,11 +48,12 @@ enabled=1
 autorefresh=1 
 type=rpm-md
 ```
-2.2.3 Install Elasticsearch 
+### 2.2.3 Install Elasticsearch 
 Now, install Elasticsearch using dnf 
+```
 sudo dnf install elasticsearch -y 
-
-2.2.4 Configure Elasticsearch (Optional but Recommended) 
+```
+### 2.2.4 Configure Elasticsearch (Optional but Recommended) 
 By default, Elasticsearch listens on localhost. For production, we might want to adjust 
 network.host in its configuration file. 
 sudo nano /etc/elasticsearch/elasticsearch.yml 
@@ -60,31 +61,33 @@ Find and uncomment/modify
 network.host: 0.0.0.0 
 http.port: 9200 
 
-2.2.5 Start and Enable Elasticsearch Service 
+### 2.2.5 Start and Enable Elasticsearch Service 
+```
 sudo systemctl start elasticsearch 
 sudo systemctl enable elasticsearch 
-sudo systemctl status elasticsearch 
+sudo systemctl status elasticsearch
+```
 Verify that the status is now active (running). 
 
-2.2.6 Verify Cluster: 
+### 2.2.6 Verify Cluster: 
 curl -X GET "localhost:9200/_cluster/health?pretty" 
 ○ Check for "status": "green" or "yellow". If "red", contact your manager. 
 
-2.2.7 List Indices (confirm 8 indices after data is loaded): 
+### 2.2.7 List Indices (confirm 8 indices after data is loaded): 
 curl -X GET "localhost:9200/_cat/indices?v" 
 ○ Note index names (e.g., index1 to index8). 
 
 ## 3. Install and Configure the repository-s3 Plugin 
 The repository-s3 plugin allows Elasticsearch to store snapshots in AWS S3. 
 
-3.1 Create directory: 
+### 3.1 Create directory: 
 sudo mkdir -p /opt/elasticsearch-backup 
 
-3.2 Set permissions: 
+### 3.2 Set permissions: 
 sudo chown elasticsearch:elasticsearch /opt/elasticsearch-backup 
 sudo chmod 755 /opt/elasticsearch-backup 
 
-3.3 Install the Plugin 
+### 3.3 Install the Plugin 
 Run the following command on your Elasticsearch server.  
 Navigate to Elasticsearch directory: 
 cd /usr/share/elasticsearch 
@@ -96,15 +99,15 @@ sudo systemctl status elasticsearch
 Verify: 
 curl -X GET "localhost:9200/_cluster/health?pretty" 
 
-3.4 Securely Store AWS Credentials 
+### 3.4 Securely Store AWS Credentials 
 Elasticsearch requires access to your AWS S3 bucket. It's best practice to store credentials 
 securely using Elasticsearch's keystore. 
 
-3.4.1 Create the Keystore (if it doesn't exist) 
+### 3.4.1 Create the Keystore (if it doesn't exist) 
 cd /usr/share/elasticsearch 
 sudo bin/elasticsearch-keystore create 
 
-3.4.2 Add AWS Access Key and Secret Key to Keystore 
+### 3.4.2 Add AWS Access Key and Secret Key to Keystore 
 Add your AWS access key and secret key to the keystore. Replace the values with the actual 
 credentials provided by your manager. 
 Add credentials: 
@@ -112,8 +115,7 @@ sudo bin/elasticsearch-keystore add s3.client.default.access_key
 ● Enter: AKIA3**********8 
 sudo bin/elasticsearch-keystore add s3.client.default.secret_key 
 ● Enter: PGNntMdwSe***************** 
-Important: You might be prompted to enter the values interactively. After adding, you need to 
-restart Elasticsearch again for the changes to the keystore to be recognized. 
+Important: You might be prompted to enter the values interactively. After adding, you need to restart Elasticsearch again for the changes to the keystore to be recognized. 
 sudo systemctl restart elasticsearch 
 Reload settings: 
 curl -X POST "localhost:9200/_nodes/reload_secure_settings?pretty" 
@@ -129,7 +131,7 @@ Create S3 bucket (if not created):
 ● Enable Block all public access. 
 ● Click Create bucket.
 
-4.1 Register the Repository 
+### 4.1 Register the Repository 
 Use the following curl command to register the repository. 
 ● Repository Name: my_s3_repository (You can choose any descriptive name) 
 ● Bucket Name: pnq-backup-elasticsearch 
@@ -152,7 +154,7 @@ Expected Output:
 }
 ```
 
-4.2 Verify the Repository 
+### 4.2 Verify the Repository 
 You can verify that the repository has been successfully registered: 
 curl -X GET "localhost:9200/_snapshot/my_s3_repository?pretty" 
 Expected Output: You should see details about your registered repository. 
@@ -171,7 +173,7 @@ Expected Output: You should see details about your registered repository.
 ## 5. Take a Snapshot (Backup) 
 Now that the repository is set up, you can take snapshots.
 
-5.1 Take a Manual Snapshot of Specific Indexes (Individual Index Restore 
+### 5.1 Take a Manual Snapshot of Specific Indexes (Individual Index Restore 
 Use Case) 
 As per our requirement, the use case is individual index restore, and y weave 8 indexes. We 
 can specify which indexes to back up. Let's assume our indexes are index_1, index_2, ..., 
@@ -214,30 +216,29 @@ curl -X PUT
 '
 ```
 
-5.2 Verify Snapshots 
+### 5.2 Verify Snapshots 
 To list all snapshots in your repository: 
 curl -X GET "localhost:9200/_snapshot/my_s3_repository/_all?pretty" 
 To get information about a specific snapshot: 
 curl -X GET 
-"localhost:9200/_snapshot/my_s3_repository/snapshot_20250616_index1_in
- dex2?pretty" 
+"localhost:9200/_snapshot/my_s3_repository/snapshot_20250616_index1_index2?pretty" 
 The state field in the output should be SUCCESS. 
 
 ## 6. Restore from a Snapshot 
 Restoring involves bringing data back from a snapshot. Our use case is individual index restore.
 
-6.1 Restore a Specific Index 
+### 6.1 Restore a Specific Index 
 Important Considerations Before Restoring: 
 ● Close the Index: You must close the index you want to restore if it already exists in your 
 cluster. If you restore an index with the same name while it's open, it will fail. 
 ● Rename Index (Optional but Recommended for Testing): For testing purposes, or if 
 you don't want to overwrite the existing index, you can restore it to a different name. 
 
-6.1.1 Close an Index (if it exists) 
+### 6.1.1 Close an Index (if it exists) 
 If index1 already exists and is open, close it: 
 curl -X POST "localhost:9200/index_1/_close?pretty" 
 
-6.1.2 Perform the Restore 
+### 6.1.2 Perform the Restore 
 To restore index_1 from snapshot_20250616_index1_index2 into a new index called 
 restored_index_1: 
 ```
@@ -274,7 +275,7 @@ curl -X POST
 After restoration, you can check the status of your indexes: 
 curl -X GET "localhost:9200/_cat/indices?v" 
 
-6.1.3 Open the Restored Index (if it was closed) 
+### 6.1.3 Open the Restored Index (if it was closed) 
 If you closed the index before restoring, open it now: 
 curl -X POST "localhost:9200/restored_index_1/_open?pretty" 
 
@@ -284,13 +285,12 @@ As per our strategy:
 ● Cleanup old backups: Every Sunday at 6 AM (older than 28 days) 
 We will use cron for scheduling these tasks. 
 
-7.1 Create Backup Script 
+### 7.1 Create Backup Script 
 First, create a script that takes the snapshot. 
 sudo mkdir -p /opt/elasticsearch_backup 
 sudo nano /opt/elasticsearch_backup/take_snapshot.sh 
 Paste the following. Remember to replace 
-index_1,index_2,index_3,index_4,index_5,index_6,index_7,index_8 with the 
-actual comma-separated list of your 8 indexes. 
+index_1,index_2,index_3,index_4,index_5,index_6,index_7,index_8 with the actual comma-separated list of your 8 indexes. 
 ```
 #!/bin/bash 
 # --- Elasticsearch Backup Script --- 
@@ -328,7 +328,7 @@ Save and exit.
 Make the script executable: 
 sudo chmod +x /opt/elasticsearch_backup/take_snapshot.sh 
 
-7.2 Create Cleanup Script 
+### 7.2 Create Cleanup Script 
 Install jq (for robust JSON parsing): 
 sudo dnf install jq -y 
 This script will list all snapshots and delete those older than 28 days. 
@@ -357,21 +357,20 @@ Save and exit.
 Make the script executable: 
 sudo chmod +x /opt/elasticsearch_backup/cleanup_snapshots.sh 
 
-7.3 Schedule with Cron 
+### 7.3 Schedule with Cron 
 Open the cron table for editing: 
 sudo crontab -e 
 Insert 
 # Backup Elasticsearch every Sunday at 3 AM 
 0 3 * * 0 /opt/elasticsearch_backup/take_snapshot.sh >> 
 /var/log/elasticsearch_backup.log 2>&1 
-# Clean up old Elasticsearch snapshots every Sunday at 6 AM (older 
-than 28 days) 
+# Clean up old Elasticsearch snapshots every Sunday at 6 AM (older than 28 days) 
+
 0 6 * * 0 /opt/elasticsearch_backup/cleanup_snapshots.sh >> 
 /var/log/elasticsearch_cleanup.log 2>&1 
 ● 0 3 * * 0: This means "at 03:00 on Sunday" (0 = Sunday, 1 = Monday, etc.). 
 ● 0 6 * * 0: This means "at 06:00 on Sunday". 
-● >> /var/log/elasticsearch_backup.log 2>&1: Redirects both standard output 
-and standard error to a log file. 
+● >> /var/log/elasticsearch_backup.log 2>&1: Redirects both standard output and standard error to a log file. 
 Save and exit. 
 
 ## 8: Monitor and Maintain 
